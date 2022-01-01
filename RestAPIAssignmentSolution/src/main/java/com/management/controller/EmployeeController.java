@@ -1,9 +1,12 @@
 package com.management.controller;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.data.domain.Sort.Direction;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.management.entity.Employee;
 import com.management.service.EmployeeService;
@@ -27,11 +31,16 @@ public class EmployeeController {
 	private EmployeeService employeeService;
 
 	@PostMapping("/save")
-	public String save(@RequestParam("firstName") String firstName, @RequestParam("lastName") String lastName,
+	public Employee save(@RequestParam("firstName") String firstName, @RequestParam("lastName") String lastName,
 			@RequestParam("email") String email) {
 		Employee employee = Employee.builder().firstName(firstName).lastName(lastName).email(email).build();
-		employeeService.save(employee);
-		return "Successfully saved - " + employee.toString();
+		if (!employeeService.existsById(employee.getId())) {
+			employeeService.save(employee);
+			return employee;
+		} else {
+			throw new ResponseStatusException(HttpStatus.CONFLICT,
+					"Employee with id - " + employee.getId() + " already exists");
+		}
 	}
 
 	@GetMapping("/findAll")
@@ -40,31 +49,32 @@ public class EmployeeController {
 	}
 
 	@GetMapping("/findById")
-	public String findById(@RequestParam("employeeId") int id) {
-		if (employeeService.existsById(id)) {
-			return employeeService.findById(id).toString();
-		} else {
-			return "No employee found with id - " + id;
+	public Employee findById(@RequestParam("employeeId") int id) {
+		try {
+			return employeeService.findById(id);
+		} catch (NoSuchElementException e) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No employee found with id - " + id);
 		}
 	}
 
 	@PutMapping("/updateById")
-	public String updateById(@RequestBody Employee employee) {
+	public Employee updateById(@RequestBody Employee employee) {
 		if (employeeService.existsById(employee.getId())) {
 			employeeService.save(employee);
-			return "Successfully updated - " + employeeService.findById(employee.getId()).toString();
+			return employee;
 		} else {
-			return "No employee found with id - " + employee.getId();
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No employee found with id - " + employee.getId());
 		}
 	}
 
 	@DeleteMapping("/deleteById")
 	public String deleteById(@RequestParam("employeeId") int id) {
-		if (employeeService.existsById(id)) {
+		try {
 			employeeService.deleteById(id);
 			return "Deleted employee id - " + id;
-		} else
-			return "No employee found with id - " + id;
+		} catch (EmptyResultDataAccessException e) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No employee found with id - " + id);
+		}
 	}
 
 	@GetMapping("/findByFirstNameContainsAllIgnoreCase")

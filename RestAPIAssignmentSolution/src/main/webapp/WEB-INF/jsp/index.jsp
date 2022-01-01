@@ -19,8 +19,8 @@
 		<h3>
 			Welcome to Employee Management
 			<c:choose>
-				<c:when test="${loggedInUser != null}">
-					<p style="text-align: right;">Hi, ${loggedInUser} &nbsp;&nbsp;&nbsp;
+				<c:when test="${LoggedInUser != null}">
+					<p style="text-align: right;">Hi, ${LoggedInUser} &nbsp;&nbsp;&nbsp;
 					<a href="/logout" class="btn btn-primary btn-sm mb-3 float-right">
 						Logout </a></p>
 				</c:when>

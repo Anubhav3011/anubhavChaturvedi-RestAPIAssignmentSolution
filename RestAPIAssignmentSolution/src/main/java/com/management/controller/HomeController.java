@@ -31,10 +31,7 @@ public class HomeController {
 		model.addAttribute("Users", users);
 		List<Employee> employees = employeeService.findAll();
 		model.addAttribute("Employees", employees);
-		if (principal != null)
-			model.addAttribute("loggedInUser", principal.getName());
-		else
-			model.addAttribute("loggedInUser", null);
+		model.addAttribute("LoggedInUser", principal != null ? principal.getName() : null);
 		return "index";
 	}
 }

@@ -1,8 +1,12 @@
 package com.management.controller;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -11,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.management.entity.Role;
 import com.management.service.RoleService;
@@ -26,10 +31,20 @@ public class RoleController {
 	private RoleService roleService;
 
 	@PostMapping("/save")
-	public String save(@RequestParam("name") String name) {
+	public Role save(@RequestParam("name") String name) {
 		Role role = Role.builder().name(name).build();
-		roleService.save(role);
-		return "Successfully saved - " + role.toString();
+		if (!roleService.existsById(role.getId())) {
+			try {
+				roleService.save(role);
+				return role;
+			} catch (DataIntegrityViolationException e) {
+				throw new ResponseStatusException(HttpStatus.CONFLICT,
+						"Role with name - " + role.getName() + " already exists");
+			}
+		} else {
+			throw new ResponseStatusException(HttpStatus.CONFLICT,
+					"Role with id - " + role.getId() + " already exists");
+		}
 	}
 
 	@GetMapping("/findAll")
@@ -38,31 +53,37 @@ public class RoleController {
 	}
 
 	@GetMapping("/findById")
-	public String findById(@RequestParam("roleId") int id) {
-		if (roleService.existsById(id)) {
-			return roleService.findById(id).toString();
-		} else {
-			return "No role found with id - " + id;
+	public Role findById(@RequestParam("roleId") int id) {
+		try {
+			return roleService.findById(id);
+		} catch (NoSuchElementException e) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No role found with id - " + id);
 		}
 	}
 
 	@PutMapping("/updateById")
-	public String updateById(@RequestBody Role role) {
+	public Role updateById(@RequestBody Role role) {
 		if (roleService.existsById(role.getId())) {
-			roleService.save(role);
-			return "Successfully updated - " + roleService.findById(role.getId()).toString();
+			try {
+				roleService.save(role);
+				return role;
+			} catch (DataIntegrityViolationException e) {
+				throw new ResponseStatusException(HttpStatus.CONFLICT,
+						"Role with name - " + role.getName() + " already exists");
+			}
 		} else {
-			return "No role found with id - " + role.getId();
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No role found with id - " + role.getId());
 		}
 	}
 
 	@DeleteMapping("/deleteById")
 	public String deleteById(@RequestParam("roleId") int id) {
-		if (roleService.existsById(id)) {
+		try {
 			roleService.deleteById(id);
 			return "Deleted role id - " + id;
-		} else
-			return "No role found with id - " + id;
+		} catch (EmptyResultDataAccessException e) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No role found with id - " + id);
+		}
 	}
 
 }
